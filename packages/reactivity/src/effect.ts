@@ -16,11 +16,14 @@ import { ComputedRefImpl } from './computed'
 // which maintains a Set of subscribers, but we simply store them as
 // raw Sets to reduce memory overhead.
 type KeyToDepMap = Map<any, Dep>
+// target对象属性key的依赖
 const targetMap = new WeakMap<any, KeyToDepMap>()
 
+// effectTrackDepth is only updated in Reactive#run.
 // The number of effects currently being tracked recursively.
 let effectTrackDepth = 0
 
+// 1,2,4,8,16...2^30
 export let trackOpBit = 1
 
 /**
@@ -52,6 +55,7 @@ export const MAP_KEY_ITERATE_KEY = Symbol(__DEV__ ? 'Map key iterate' : '')
 
 export class ReactiveEffect<T = any> {
   active = true
+  // 用来记录谁触发了当前effect。
   deps: Dep[] = []
   parent: ReactiveEffect | undefined = undefined
 
@@ -85,17 +89,20 @@ export class ReactiveEffect<T = any> {
 
   run() {
     if (!this.active) {
+      // active初始值是true，当stop被调用之后为false。
       return this.fn()
     }
     let parent: ReactiveEffect | undefined = activeEffect
     let lastShouldTrack = shouldTrack
     while (parent) {
+      // 不允许递归调用自己
       if (parent === this) {
         return
       }
       parent = parent.parent
     }
     try {
+      // 用来记录effect调用栈，当effect为undefined时，事务完成。
       this.parent = activeEffect
       activeEffect = this
       shouldTrack = true
@@ -139,6 +146,7 @@ export class ReactiveEffect<T = any> {
   }
 }
 
+// 和所有deps断开依赖关系
 function cleanupEffect(effect: ReactiveEffect) {
   const { deps } = effect
   if (deps.length) {
@@ -216,6 +224,7 @@ export function track(target: object, type: TrackOpTypes, key: unknown) {
     if (!depsMap) {
       targetMap.set(target, (depsMap = new Map()))
     }
+    // target.key的依赖项
     let dep = depsMap.get(key)
     if (!dep) {
       depsMap.set(key, (dep = createDep()))
@@ -245,7 +254,10 @@ export function trackEffects(
   }
 
   if (shouldTrack) {
+    // 建立当前effect和reactive的关系
     dep.add(activeEffect!)
+    // 这里还把dep记录到当前effect的deps中，方便finalizeDepMarkers时，移除关系。
+    // `dep.delete(effect)`
     activeEffect!.deps.push(dep)
     if (__DEV__ && activeEffect!.onTrack) {
       activeEffect!.onTrack(

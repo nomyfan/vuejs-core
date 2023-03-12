@@ -123,11 +123,11 @@ class RefImpl<T> {
   set value(newVal) {
     const useDirectValue =
       this.__v_isShallow || isShallow(newVal) || isReadonly(newVal)
-    newVal = useDirectValue ? newVal : toRaw(newVal)
-    if (hasChanged(newVal, this._rawValue)) {
-      this._rawValue = newVal
-      this._value = useDirectValue ? newVal : toReactive(newVal)
-      triggerRefValue(this, newVal)
+    const newRawVal = useDirectValue ? newVal : toRaw(newVal)
+    if (hasChanged(newRawVal, this._rawValue)) {
+      this._rawValue = newRawVal
+      this._value = useDirectValue ? newRawVal : toReactive(newRawVal)
+      triggerRefValue(this, newRawVal)
     }
   }
 }

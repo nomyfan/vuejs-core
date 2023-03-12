@@ -93,7 +93,9 @@ function hasOwnProperty(this: object, key: string) {
 
 function createGetter(isReadonly = false, shallow = false) {
   return function get(target: Target, key: string | symbol, receiver: object) {
+    // 处理reactive定义的“关键字”属性。
     if (key === ReactiveFlags.IS_REACTIVE) {
+      // 非只读下才是reactive
       return !isReadonly
     } else if (key === ReactiveFlags.IS_READONLY) {
       return isReadonly
@@ -101,6 +103,9 @@ function createGetter(isReadonly = false, shallow = false) {
       return shallow
     } else if (
       key === ReactiveFlags.RAW &&
+      // 什么情况下会出现不相等的情况？当把proxy对象（P）成为另外一个对象（A）的原型链上其中一节时。
+      // 此时receiver是A，target是P的原始对象。
+      // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy/Proxy/set#parameters
       receiver ===
         (isReadonly
           ? shallow
@@ -113,6 +118,8 @@ function createGetter(isReadonly = false, shallow = false) {
     ) {
       return target
     }
+
+    // 以下是用户的数据
 
     const targetIsArray = isArray(target)
 
@@ -132,6 +139,7 @@ function createGetter(isReadonly = false, shallow = false) {
     }
 
     if (!isReadonly) {
+      // 如果不是只读的，那么会有可能被修改，track用来记录订阅关系，将来set的时候被更新。
       track(target, TrackOpTypes.GET, key)
     }
 
@@ -175,6 +183,7 @@ function createSetter(shallow = false) {
         value = toRaw(value)
       }
       if (!isArray(target) && isRef(oldValue) && !isRef(value)) {
+        // ref will take care of trigger
         oldValue.value = value
         return true
       }

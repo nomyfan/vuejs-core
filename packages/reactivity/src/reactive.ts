@@ -15,8 +15,8 @@ import type { UnwrapRefSimple, Ref, RawSymbol } from './ref'
 
 export const enum ReactiveFlags {
   SKIP = '__v_skip',
-  IS_REACTIVE = '__v_isReactive',
-  IS_READONLY = '__v_isReadonly',
+  IS_REACTIVE = '__v_isReactive', // 可读可写
+  IS_READONLY = '__v_isReadonly', // 只读
   IS_SHALLOW = '__v_isShallow',
   RAW = '__v_raw'
 }
@@ -195,7 +195,9 @@ function createReactiveObject(
   // exception: calling readonly() on a reactive object
   if (
     target[ReactiveFlags.RAW] &&
-    !(isReadonly && target[ReactiveFlags.IS_REACTIVE])
+    !(
+      isReadonly && target[ReactiveFlags.IS_REACTIVE]
+    ) /* not convert reactive to readonly(mutable to immutable) */
   ) {
     return target
   }
@@ -209,6 +211,8 @@ function createReactiveObject(
   if (targetType === TargetType.INVALID) {
     return target
   }
+  // In the case of `readonly(reactive_object))`, which coverts mutable to immutable,
+  // target below will be a reactive object.
   const proxy = new Proxy(
     target,
     targetType === TargetType.COLLECTION ? collectionHandlers : baseHandlers

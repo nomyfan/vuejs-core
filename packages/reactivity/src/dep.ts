@@ -40,10 +40,11 @@ export const initDepMarkers = ({ deps }: ReactiveEffect) => {
 export const finalizeDepMarkers = (effect: ReactiveEffect) => {
   const { deps } = effect
   if (deps.length) {
-    let ptr = 0
+    let ptr = 0 // 记录最后的数组长度
     for (let i = 0; i < deps.length; i++) {
       const dep = deps[i]
       if (wasTracked(dep) && !newTracked(dep)) {
+        // effect被执行完之后，会从断开原来的依赖关系。
         dep.delete(effect)
       } else {
         deps[ptr++] = dep
@@ -52,6 +53,7 @@ export const finalizeDepMarkers = (effect: ReactiveEffect) => {
       dep.w &= ~trackOpBit
       dep.n &= ~trackOpBit
     }
+    // 数组缩容
     deps.length = ptr
   }
 }
